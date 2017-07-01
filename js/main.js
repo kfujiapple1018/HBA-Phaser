@@ -1,6 +1,11 @@
+var coinPickupCount = 0;
+
+var hasKey = false;
+
 function init(){
     game.renderer.renderSession.roundPixels = true;
-}
+};
+
 function preload(){
 	game.load.image('background', 'images/background.png');
     game.load.json('level:1', 'data/level01.json'); 
@@ -10,16 +15,22 @@ function preload(){
     game.load.image('grass:4x1', 'images/grass_4x1.png');
     game.load.image('grass:2x1', 'images/grass_2x1.png');
     game.load.image('grass:1x1', 'images/grass_1x1.png');
-    game.load.image('hero', 'images/hero_stopped.png');
-    game.load.audio('sfx:jump', 'audio/jump.wav');
-    game.load.spritesheet('coin', 'images/coin_animated.png', 22, 22);
-    game.load.audio('sfx:coin', 'audio/jump.wav');
-    game.load.spritesheet('spider', 'images/spider.png', 42, 32);
+    game.load.image('key', 'images/key.png');
     game.load.image('invisible-wall', 'images/invisible_wall.png');
-    game.load.audio('sfx:stomp', 'audio/stomp.wav');
     game.load.image('icon:coin', 'images/coin_icon.png');
     game.load.image('font:numbers', 'images/numbers.png');
+    game.load.audio('sfx:jump', 'audio/jump.wav');
+    game.load.audio('sfx:coin', 'audio/jump.wav');
+    game.load.audio('sfx:stomp', 'audio/stomp.wav');
+    game.load.audio('sfx:key', 'audio/key.wav');
+    game.load.audio('sfx:door', 'audio/door.wav');
+    game.load.spritesheet('spider', 'images/spider.png', 42, 32);
+    game.load.spritesheet('coin', 'images/coin_animated.png', 22, 22);
+    game.load.spritesheet('hero', 'images/hero.png', 36, 42);
+    game.load.spritesheet('door', 'images/door.png', 42, 66);
+    game.load.spritesheet('icon:key', 'images/key_icon.png', 34, 30);
 };
+
 function create(){
 	game.add.image(0, 0, 'background');
   loadLevel(this.game.cache.getJSON('level:1'));
@@ -33,32 +44,46 @@ function create(){
     sfxStomp = game.add.audio('sfx:stomp');
     coinIcon = game.make.image(40, 0, 'icon:coin');
     hud = game.add.group();
+    sfxKey = game.add.audio('sfx:key');
+    sfxDoor = game.add.audio('sfx:door');
+    keyIcon = game.make.image(0, 19, 'icon:key');
     hud.add(coinIcon);
     hud.position.set(10, 10);
     var NUMBERS_STR = "0123456789X ";
-        console.log (NUMBERS_STR);
     coinFont = game.add.retroFont('font:numbers', 20, 26, NUMBERS_STR, 6);
     var coinScoreImg = game.make.image(100 + coinIcon.width, coinIcon.height / 2, coinFont);
     coinScoreImg.anchor.set(1, 0.5);
     hud.add(coinScoreImg);
+    keyIcon.anchor.set(0, 0.5);
+    hud.add(keyIcon);
 };
+
 function update(){
    handleInput();
    handleCollisions();
    moveSpider();
+   var animationName = getAnimationName();
+    if (hero.animations.name !== animationName) {
+        hero.animations.play(animationName);
+    }
+    keyIcon.frame = hasKey ? 1 : 0;
 };
+
 function loadLevel (data) {
     platforms = game.add.group();
     coins = game.add.group();
     spiders = game.add.group();
     enemyWalls = game.add.group();
     enemyWalls.visible = false;
+    bgDecoration = game.add.group();
     data.platforms.forEach(spawnPlatform, this);
     data.coins.forEach(spawnCoin, this);
     game.physics.arcade.gravity.y = 1200;
     spawnCharacters({hero: data.hero, spiders: data.spiders});
-
+    spawnDoor(data.door.x, data.door.y);
+    spawnKey(data.key.x, data.key.y);
 };
+
 function spawnPlatform(platform) {
     game.add.sprite(platform.x, platform.y, platform.image);
     var sprite = platforms.create(platform.x, platform.y, platform.image);
@@ -68,9 +93,14 @@ function spawnPlatform(platform) {
     sprite.body.allowGravity = false;
     sprite.body.immovable = true;
 };
+
 function spawnCharacters (data) {
     hero = game.add.sprite(data.hero.x, data.hero.y, 'hero');
     hero.anchor.set(0.5, 0.5);
+    hero.animations.add('stop', [0]);
+    hero.animations.add('run', [1, 2], 8, true); // 8fps looped
+    hero.animations.add('jump', [3]);
+    hero.animations.add('fall', [4]);
     game.physics.enable(hero);
     hero.body.collideWorldBounds = true;
     data.spiders.forEach(function (spider){
@@ -86,6 +116,7 @@ function spawnCharacters (data) {
         sprite.body.velocity.x = 100;
     })
 };
+
 function move(direction){
     hero.body.velocity.x = direction * 200;
      if (hero.body.velocity.x < 0) {   
@@ -94,7 +125,8 @@ function move(direction){
     else if (hero.body.velocity.x > 0) {
         hero.scale.x = 1;
     }
-}
+};
+
 function handleInput(){
     if (leftKey.isDown) {
         move(-1);
@@ -105,14 +137,21 @@ function handleInput(){
     else {
         move(0);
     }
-}
+};
+
 function handleCollisions(){
     game.physics.arcade.collide(hero, platforms);
     game.physics.arcade.collide(spiders, platforms);
     game.physics.arcade.collide(spiders, enemyWalls);
     game.physics.arcade.overlap(hero, coins, onHeroVsCoin, null);
     game.physics.arcade.overlap(hero, spiders, onHeroVsEnemy, null);
+    game.physics.arcade.overlap(hero, key, onHeroVsKey, null,);
+    game.physics.arcade.overlap(hero, door, onHeroVsDoor,
+        function (hero, door) {
+            return hasKey && hero.body.touching.down;
+        });
 };
+
 function jump(){
     hero.body.velocity.y = -600;
     var canJump = hero.body.touching.down;
@@ -122,26 +161,31 @@ function jump(){
     }
     return canJump;
 };
+
 function spawnCoin(coin) {
     var sprite = coins.create(coin.x, coin.y, 'coin');
     sprite.anchor.set(0.5, 0.5);
-    sprite.animations.add('rotate', [0, 1, 2, 1], 6, true); // 6fps, looped
-    sprite.animations.play('rotate');
     game.physics.enable(sprite);
     sprite.body.allowGravity = false;
+    sprite.animations.add('rotate', [0, 1, 2, 1], 6, true);
+    sprite.animations.play('rotate');
 };
+
 function onHeroVsCoin(hero, coin){
     coin.kill();
     sfxCoin.play();
-    coinFont.text = `x${this.coinPickupCount}`;
+    coinPickupCount++;
+    coinFont.text = `x${coinPickupCount}`;
 };
+
 function spawnEnemyWall(x, y, side){
     var sprite = enemyWalls.create(x, y, 'invisible-wall');
     sprite.anchor.set(side === 'left' ? 1 : 0, 1);
     game.physics.enable(sprite);
     sprite.body.immovable = true;
     sprite.body.allowGravity = false;
-}
+};
+
 function moveSpider(){
     spiders.forEach(function (spider){
         if (spider.body.touching.right || spider.body.blocked.right) {
@@ -151,7 +195,8 @@ function moveSpider(){
             spider.body.velocity.x = 100;
         }
     })
-}
+};
+
 function onHeroVsEnemy(hero, enemy){
     if (hero.body.velocity.y > 0) {
         hero.body.velocity.y = -200;
@@ -162,14 +207,16 @@ function onHeroVsEnemy(hero, enemy){
         sfxStomp.play();
         game.state.restart();
     }
-}
+};
+
 function die(spider) {
     spider.body.enable = false;
     spider.animations.play('die');
     spider.animations.play('die').onComplete.addOnce(function () {
         spider.kill()
     });
-}
+};
+
 function spawnSpider(){
     spider = spiders.create(spider.x, spider.y, 'spider');
     spider.anchor.set(0.5);
@@ -179,9 +226,45 @@ function spawnSpider(){
     game.physics.enable(spider);
     spider.body.collideWorldBounds = true;
     spider.body.velocity.x = Spider.speed;
-}
-var coinPickupCount = 0;
-function onHeroVsCoin(hero, coin){
-    coinPickupCount++;
-}
+};
+
+function getAnimationName(){
+    var name = 'stop';
+    if (hero.body.velocity.y < 0) {
+        name = 'jump';
+    }
+    else if (hero.body.velocity.y >= 0 && !hero.body.touching.down) {
+        name = 'fall';
+    }
+    else if (hero.body.velocity.x !== 0 && hero.body.touching.down) {
+        name = 'run';
+    }
+    return name;
+};
+
+function spawnDoor(x, y){
+    door = bgDecoration.create(x, y, 'door');
+    door.anchor.setTo(0.5, 1);
+    game.physics.enable(door);
+    door.body.allowGravity = false;
+};
+
+function spawnKey(x, y){
+    key = bgDecoration.create(x, y, 'key');
+    key.anchor.set(0.5, 0.5);
+    game.physics.enable(key);
+    key.body.allowGravity = false;
+};
+
+function onHeroVsKey(hero, key){
+    sfxKey.play();
+    key.kill();
+    hasKey = true;
+};
+
+function onHeroVsDoor(hero, door){
+    sfxDoor.play();
+    game.state.restart();
+};
+
 var game = new Phaser.Game(960, 600, Phaser.AUTO, 'game', {init: init, preload: preload, create: create, update: update});
