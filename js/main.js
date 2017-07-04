@@ -2,13 +2,16 @@ var coinPickupCount = 0;
 
 var hasKey = false;
 
+var level = 0;
+
 function init(){
     game.renderer.renderSession.roundPixels = true;
 };
 
 function preload(){
 	game.load.image('background', 'images/background.png');
-    game.load.json('level:1', 'data/level01.json'); 
+    game.load.json('level:1', 'data/level01.json');      
+    game.load.json('level:0', 'data/level00.json');      
     game.load.image('ground', 'images/ground.png');
     game.load.image('grass:8x1', 'images/grass_8x1.png');
     game.load.image('grass:6x1', 'images/grass_6x1.png');
@@ -33,7 +36,7 @@ function preload(){
 
 function create(){
 	game.add.image(0, 0, 'background');
-  loadLevel(this.game.cache.getJSON('level:1'));
+  loadLevel(this.game.cache.getJSON('level:' + level));
     leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
     rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
     upKey = game.input.keyboard.addKey(Phaser.Keyboard.UP);
@@ -264,6 +267,13 @@ function onHeroVsKey(hero, key){
 
 function onHeroVsDoor(hero, door){
     sfxDoor.play();
+    if (level === 0){
+        level = level + 1;
+    }
+    else{
+        level = 0;
+    }
+    hasKey = false;
     game.state.restart();
 };
 
