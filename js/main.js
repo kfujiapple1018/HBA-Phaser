@@ -19,6 +19,7 @@ function preload(){
     game.load.image('grass:4x1', 'images/grass_4x1.png');
     game.load.image('grass:2x1', 'images/grass_2x1.png');
     game.load.image('grass:1x1', 'images/grass_1x1.png');
+    game.load.image('hero', 'images/bob.png');
     game.load.image('key', 'images/key.png');
     game.load.image('invisible-wall', 'images/invisible_wall.png');
     game.load.image('icon:coin', 'images/coin_icon.png');
@@ -28,9 +29,10 @@ function preload(){
     game.load.audio('sfx:stomp', 'audio/stomp.wav');
     game.load.audio('sfx:key', 'audio/key.wav');
     game.load.audio('sfx:door', 'audio/door.wav');
-    game.load.spritesheet('spider', 'images/spider.png', 42, 32);
+    game.load.spritesheet('spider', 'images/.png');
+    // game.load.spritesheet('spider', 'images/spider.png', 42, 32);
     game.load.spritesheet('coin', 'images/coin_animated.png', 22, 22);
-    game.load.spritesheet('hero', 'images/bob.png', 36, 42);
+    // game.load.spritesheet('hero', 'images/bob.png', 36, 42);
     game.load.spritesheet('door', 'images/door.png', 42, 66);
     game.load.spritesheet('icon:key', 'images/key_icon.png', 34, 30);
 };
@@ -46,6 +48,7 @@ function create(){
     })
     sfxCoin = game.add.audio('sfx:coin');
     sfxStomp = game.add.audio('sfx:stomp');
+    sfxJump = game.add.audio('sfx:jump');
     coinIcon = game.make.image(40, 0, 'icon:coin');
     hud = game.add.group();
     sfxKey = game.add.audio('sfx:key');
@@ -66,10 +69,10 @@ function update(){
    handleInput();
    handleCollisions();
    moveSpider();
-   var animationName = getAnimationName();
-    if (hero.animations.name !== animationName) {
-        hero.animations.play(animationName);
-    }
+   // var animationName = getAnimationName();
+   //  if (hero.animations.name !== animationName) {
+   //      hero.animations.play(animationName);
+   //  }
     keyIcon.frame = hasKey ? 1 : 0;
 };
 
@@ -101,6 +104,7 @@ function spawnPlatform(platform) {
 function spawnCharacters (data) {
     hero = game.add.sprite(data.hero.x, data.hero.y, 'hero');
     hero.anchor.set(0.5, 0.5);
+    hero.scale.setTo(.1, .1);
     hero.animations.add('stop', [0]);
     hero.animations.add('run', [1, 2], 8, true); // 8fps looped
     hero.animations.add('jump', [3]);
@@ -124,10 +128,10 @@ function spawnCharacters (data) {
 function move(direction){
     hero.body.velocity.x = direction * 200;
      if (hero.body.velocity.x < 0) {   
-        hero.scale.x = -1;
+        hero.scale.x = -.1;
     }
     else if (hero.body.velocity.x > 0) {
-        hero.scale.x = 1;
+        hero.scale.x = .1;
     }
 };
 
@@ -232,19 +236,19 @@ function spawnSpider(){
     spider.body.velocity.x = Spider.speed;
 };
 
-function getAnimationName(){
-    var name = 'stop';
-    if (hero.body.velocity.y < 0) {
-        name = 'jump';
-    }
-    else if (hero.body.velocity.y >= 0 && !hero.body.touching.down) {
-        name = 'fall';
-    }
-    else if (hero.body.velocity.x !== 0 && hero.body.touching.down) {
-        name = 'run';
-    }
-    return name;
-};
+// function getAnimationName(){
+//     var name = 'stop';
+//     if (hero.body.velocity.y < 0) {
+//         name = 'jump';
+//     }
+//     else if (hero.body.velocity.y >= 0 && !hero.body.touching.down) {
+//         name = 'fall';
+//     }
+//     else if (hero.body.velocity.x !== 0 && hero.body.touching.down) {
+//         name = 'run';
+//     }
+//     return name;
+// };
 
 function spawnDoor(x, y){
     door = bgDecoration.create(x, y, 'door');
