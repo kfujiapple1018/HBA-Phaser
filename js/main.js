@@ -10,6 +10,7 @@ function init(){
 
 function preload(){
 	game.load.image('background' ,'images/dewdew.png');
+    game.load.json('level:2', 'data/level02.json');      
     game.load.json('level:1', 'data/level01.json');      
     game.load.json('level:0', 'data/level00.json');      
     game.load.image('ground', 'images/ground.png');
@@ -29,7 +30,7 @@ function preload(){
     game.load.audio('sfx:door', 'audio/door.wav');
     game.load.spritesheet('spider', 'images/spider.png', 42, 32);
     game.load.spritesheet('coin', 'images/coin_animated.png', 22, 22);
-    game.load.spritesheet('hero', 'images/hero.png', 36, 42);
+    game.load.spritesheet('hero', 'images/bob.png', 36, 42);
     game.load.spritesheet('door', 'images/door.png', 42, 66);
     game.load.spritesheet('icon:key', 'images/key_icon.png', 34, 30);
 };
@@ -268,6 +269,9 @@ function onHeroVsKey(hero, key){
 function onHeroVsDoor(hero, door){
     sfxDoor.play();
     if (level === 0){
+        level = level + 1;
+    }
+    else if(level === 1){
         level = level + 1;
     }
     else{
